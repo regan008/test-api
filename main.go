@@ -2,11 +2,13 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 	"os"
 	"strconv"
 	"strings"
-
+	"github.com/regan008/test-api/models"
+	"github.com/gin-gonic/gin"
 	"github.com/gofrs/uuid"
 )
 
@@ -27,105 +29,150 @@ const startupMessage = `[38;5;1;48;5;16m [38;5;1;48;5;16m [38;5;1;48;5;16m [
 [38;5;1;48;5;16m [38;5;1;48;5;16m [38;5;1;48;5;16m [38;5;1;48;5;16m [38;5;1;48;5;16m [38;5;1;48;5;16m [38;5;1;48;5;16m [38;5;1;48;5;16m [38;5;1;48;5;16m [38;5;1;48;5;16m [38;5;1;48;5;16m [38;5;1;48;5;16m [38;5;1;48;5;16m [38;5;1;48;5;16m [38;5;1;48;5;16m [38;5;1;48;5;16m [38;5;1;48;5;16m [38;5;1;48;5;16m [38;5;1;48;5;16m [38;5;1;48;5;16m [38;5;1;48;5;16m [38;5;1;48;5;16m [38;5;1;48;5;16m [38;5;1;48;5;16m [38;5;1;48;5;16m [38;5;1;48;5;16m [38;5;1;48;5;16m [38;5;56;48;5;51m�[38;5;141;48;5;87m�[38;5;123;48;5;231m�[38;5;31;48;5;195m [38;5;57;48;5;73m�[38;5;1;48;5;16m [38;5;1;48;5;16m [38;5;1;48;5;16m [38;5;1;48;5;16m [38;5;51;48;5;51m [38;5;56;48;5;51m�[38;5;81;48;5;195m�[38;5;55;48;5;45m [38;5;99;48;5;51m�[38;5;177;48;5;38m [38;5;1;48;5;16m [38;5;1;48;5;16m [38;5;1;48;5;16m [38;5;1;48;5;16m [38;5;1;48;5;16m [38;5;1;48;5;16m [38;5;1;48;5;16m [38;5;1;48;5;16m [38;5;1;48;5;16m [38;5;1;48;5;16m [38;5;123;48;5;255m�[38;5;231;48;5;231m�[38;5;231;48;5;231m�[38;5;231;48;5;231m�[38;5;231;48;5;231m�[38;5;231;48;5;231m�[38;5;231;48;5;231m�[38;5;231;48;5;231m�[38;5;231;48;5;231m�[38;5;231;48;5;231m�[38;5;231;48;5;231m�[38;5;231;48;5;231m�[38;5;231;48;5;231m�[38;5;231;48;5;231m�[38;5;231;48;5;231m�[38;5;51;48;5;255m�[38;5;168;48;5;241m�[38;5;1;48;5;16m [38;5;1;48;5;16m [38;5;1;48;5;16m [38;5;1;48;5;16m [38;5;1;48;5;16m [38;5;1;48;5;16m [38;5;1;48;5;16m [38;5;1;48;5;16m [38;5;1;48;5;16m [38;5;1;48;5;16m [38;5;1;48;5;16m [0m
 [0m`
 
-func logRequest(r *http.Request) {
-	uri := r.RequestURI
-	method := r.Method
-	fmt.Println("Got request!", method, uri)
-}
 
 func main() {
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		logRequest(r)
-		fmt.Fprintf(w, "Hello! you've requested %s\n", r.URL.Path)
-	})
 
-	http.HandleFunc("/cached", func(w http.ResponseWriter, r *http.Request) {
-		maxAgeParams, ok := r.URL.Query()["max-age"]
-		if ok && len(maxAgeParams) > 0 {
-			maxAge, _ := strconv.Atoi(maxAgeParams[0])
-			w.Header().Set("Cache-Control", fmt.Sprintf("max-age=%d", maxAge))
-		}
-		responseHeaderParams, ok := r.URL.Query()["headers"]
-		if ok {
-			for _, header := range responseHeaderParams {
-				h := strings.Split(header, ":")
-				w.Header().Set(h[0], strings.TrimSpace(h[1]))
-			}
-		}
-		statusCodeParams, ok := r.URL.Query()["status"]
-		if ok {
-			statusCode, _ := strconv.Atoi(statusCodeParams[0])
-			w.WriteHeader(statusCode)
-		}
-		requestID := uuid.Must(uuid.NewV4())
-		fmt.Fprintf(w, requestID.String())
-	})
+	err := models.ConnectDatabase()
+	checkErr(err)
 
-	http.HandleFunc("/headers", func(w http.ResponseWriter, r *http.Request) {
-		keys, ok := r.URL.Query()["key"]
-		if ok && len(keys) > 0 {
-			fmt.Fprintf(w, r.Header.Get(keys[0]))
-			return
-		}
-		headers := []string{}
-		for key, values := range r.Header {
-			headers = append(headers, fmt.Sprintf("%s=%s", key, strings.Join(values, ",")))
-		}
-		fmt.Fprintf(w, strings.Join(headers, "\n"))
-	})
-
-	http.HandleFunc("/env", func(w http.ResponseWriter, r *http.Request) {
-		keys, ok := r.URL.Query()["key"]
-		if ok && len(keys) > 0 {
-			fmt.Fprintf(w, os.Getenv(keys[0]))
-			return
-		}
-		envs := []string{}
-		for _, env := range os.Environ() {
-			envs = append(envs, env)
-		}
-		fmt.Fprintf(w, strings.Join(envs, "\n"))
-	})
-
-	http.HandleFunc("/status", func(w http.ResponseWriter, r *http.Request) {
-		codeParams, ok := r.URL.Query()["code"]
-		if ok && len(codeParams) > 0 {
-			statusCode, _ := strconv.Atoi(codeParams[0])
-			if statusCode >= 200 && statusCode < 600 {
-				w.WriteHeader(statusCode)
-			}
-		}
-		requestID := uuid.Must(uuid.NewV4())
-		fmt.Fprintf(w, requestID.String())
-	})
-
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "80"
+	r := gin.Default()
+	r.Use(CORSMiddleware())
+	// API v1
+	v1 := r.Group("/api/v1")
+	{
+		v1.GET("person", getPersons)
+		v1.GET("person/:id", getPersonById)
+		// v1.POST("person", addPerson)
+		// v1.PUT("person/:id", updatePerson)
+		// v1.DELETE("person/:id", deletePerson)
+		// v1.OPTIONS("person", options)
 	}
+	// By default it serves on :8080 unless a
+	// PORT environment variable was defined.
+	r.Run(":8080")
+}
 
-	for _, encodedRoute := range strings.Split(os.Getenv("ROUTES"), ",") {
-		if encodedRoute == "" {
-			continue
-		}
-		pathAndBody := strings.SplitN(encodedRoute, "=", 2)
-		path, body := pathAndBody[0], pathAndBody[1]
-		http.HandleFunc("/"+path, func(w http.ResponseWriter, r *http.Request) {
-			fmt.Fprint(w, body)
-		})
+func CORSMiddleware() gin.HandlerFunc {
+    return func(c *gin.Context) {
+
+			c.Header("Access-Control-Allow-Origin", "*")
+			c.Header("Access-Control-Allow-Headers", "*")
+
+
+        if c.Request.Method == "OPTIONS" {
+            c.AbortWithStatus(204)
+            return
+        }
+
+        c.Next()
+    }
+}
+
+func getPersons(c *gin.Context) {
+
+	persons, err := models.GetPersons(100)
+
+	checkErr(err)
+
+	if persons == nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "No Records Found"})
+		return
+	} else {
+		c.JSON(http.StatusOK, gin.H{"data": persons})
 	}
+}
+//call get person by id function from person.go
+func getPersonById(c *gin.Context) {
 
-	bindAddr := fmt.Sprintf(":%s", port)
-	lines := strings.Split(startupMessage, "\n")
-	fmt.Println()
-	for _, line := range lines {
-		fmt.Println(line)
+	// grab the Id of the record want to retrieve
+	id := c.Param("id")
+
+	person, err := models.GetPersonById(id)
+
+	checkErr(err)
+	// if the name is blank we can assume nothing is found
+	if person.Title == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "No Records Found"})
+		return
+	} else {
+		c.JSON(http.StatusOK, gin.H{"data": person})
 	}
-	fmt.Println()
-	fmt.Printf("==> Server listening at %s 🚀\n", bindAddr)
+}
+//
+// func addPerson(c *gin.Context) {
+//
+// 	var json models.Person
+//
+// 	if err := c.ShouldBindJSON(&json); err != nil {
+// 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+// 		return
+// 	}
+//
+// 	success, err := models.AddPerson(json)
+//
+// 	if success {
+// 		c.JSON(http.StatusOK, gin.H{"message": "Success"})
+// 	} else {
+// 		c.JSON(http.StatusBadRequest, gin.H{"error": err})
+// 	}
+// }
+//
+// func updatePerson(c *gin.Context) {
+//
+// 	var json models.Person
+//
+// 	if err := c.ShouldBindJSON(&json); err != nil {
+// 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+// 		return
+// 	}
+//
+// 	personId, err := strconv.Atoi(c.Param("id"))
+//
+// 	fmt.Printf("Updating id %d", personId)
+//
+// 	if err != nil {
+// 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ID"})
+// 	}
+//
+// 	success, err := models.UpdatePerson(json, personId)
+//
+// 	if success {
+// 		c.JSON(http.StatusOK, gin.H{"message": "Success"})
+// 	} else {
+// 		c.JSON(http.StatusBadRequest, gin.H{"error": err})
+// 	}
+// }
+//
+// func deletePerson(c *gin.Context) {
+//
+// 	personId, err := strconv.Atoi(c.Param("id"))
+//
+// 	if err != nil {
+// 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ID"})
+// 	}
+//
+// 	success, err := models.DeletePerson(personId)
+//
+// 	if success {
+// 		c.JSON(http.StatusOK, gin.H{"message": "Success"})
+// 	} else {
+// 		c.JSON(http.StatusBadRequest, gin.H{"error": err})
+// 	}
+// }
 
-	err := http.ListenAndServe(fmt.Sprintf(":%s", port), nil)
+// func options(c *gin.Context) {
+//
+// 	ourOptions := "HTTP/1.1 200 OK\n" +
+// 		"Allow: GET,POST,PUT,DELETE,OPTIONS\n" +
+// 		"Access-Control-Allow-Origin: http://locahost:8080\n" +
+// 		"Access-Control-Allow-Methods: GET,POST,PUT,DELETE,OPTIONS\n" +
+// 		"Access-Control-Allow-Headers: Content-Type\n"
+//
+// 	c.String(200, ourOptions)
+// }
+
+func checkErr(err error) {
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 }
