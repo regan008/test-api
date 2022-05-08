@@ -7,7 +7,6 @@ import (
 	"os"
 	"strconv"
 	"strings"
-	"github.com/regan008/test-api/models"
 	"github.com/gin-gonic/gin"
 	"github.com/gofrs/uuid"
 )
