@@ -1,0 +1,21 @@
+name: test-api
+region: sfo
+services:
+- build_command: go build main.go
+  environment_slug: go
+  envs:
+  - key: PORT
+    scope: RUN_AND_BUILD_TIME
+    value: "8080"
+  github:
+    branch: master
+    deploy_on_push: true
+    repo: regan008/test-api
+  http_port: 8080
+  instance_count: 1
+  instance_size_slug: basic-xxs
+  name: test-api
+  routes:
+  - path: /
+  run_command: ./main
+  source_dir: /
