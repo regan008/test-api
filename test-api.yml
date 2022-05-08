@@ -17,5 +17,4 @@ services:
   name: test-api
   routes:
   - path: /
-  run_command: ./test-api
   source_dir: /
