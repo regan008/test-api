@@ -1,4 +1,5 @@
 module github.com/digitalocean/sample-golang
+module github.com/regan008/test-api/models
 
 go 1.13
 
