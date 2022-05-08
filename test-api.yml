@@ -1,7 +1,7 @@
 name: test-api
 region: sfo
 services:
-- build_command: go build main.go
+- build_command: go build
   environment_slug: go
   envs:
   - key: PORT
